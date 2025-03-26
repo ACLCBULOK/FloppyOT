@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floppy Bird with Text Obstacles</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: none;
+            background: #70c5ce;
+        }
+        #bird-selector {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 10;
+        }
+        #start-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 20;
+        }
+        #start-button:disabled {
+            background-color: #9E9E9E;
+            cursor: not-allowed;
+        }
+        #start-button:hover:enabled {
+            background-color: #45a049;
+        }
+        #scoreboard {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 18px;
+            color: white;
+            z-index: 30;
+        }
+    </style>
+</head>
+<body>
+    <div id="bird-selector">
+        <label for="bird-image">SINO OT?:</label>
+        <input type="file" id="bird-image" accept="image/*">
+    </div>
+    <button id="start-button" disabled>PLAY GAME PARAMIHAN MAKAIWAS NG OT</button>
+    <div id="scoreboard">
+        <p>Score: <span id="current-score">0</span></p>
+        <p>Highest Score: <span id="highest-score">0</span></p>
+        <p>Previous Score: <span id="previous-score">0</span></p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('start-button');
+        const birdImageInput = document.getElementById('bird-image');
+        const currentScoreElement = document.getElementById('current-score');
+        const highestScoreElement = document.getElementById('highest-score');
+        const previousScoreElement = document.getElementById('previous-score');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const obstacles = [
+            "OT MONDAY", "OT TUESDAY", "OT WEDNESDAY",
+            "OT THURSDAY", "OT FRIDAY", "OT SATURDAY", "OT SUNDAY"
+        ];
+
+        let birdImage = new Image();
+        birdImage.src = 'https://via.placeholder.com/40'; // Default bird image
+
+        birdImageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    birdImage.src = e.target.result;
+                    startButton.disabled = false; // Enable the start button once a bird is selected
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        let bird = { x: 50, y: canvas.height / 2, width: 150, height: 150, gravity: 2, lift: -30, velocity: 0 };
+        let pipes = [];
+        let frame = 0;
+        let score = 0;
+        let highestScore = 0;
+        let previousScore = 0;
+
+        function drawBird() {
+            if (birdImage.complete && birdImage.naturalWidth !== 0) {
+                ctx.drawImage(birdImage, bird.x, bird.y, bird.width, bird.height);
+            } else {
+                ctx.fillStyle = 'yellow';
+                ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+            }
+        }
+
+        function drawPipes() {
+            pipes.forEach(pipe => {
+                ctx.fillStyle = 'black';
+                ctx.font = '20px Arial';
+                ctx.fillText(pipe.text, pipe.x, pipe.y);
+            });
+        }
+
+        function updatePipes() {
+            if (frame % 100 === 0) {
+                const randomText = obstacles[Math.floor(Math.random() * obstacles.length)];
+                pipes.push({ x: canvas.width, y: Math.random() * canvas.height, text: randomText });
+                score++; // Increment score when a new pipe is added
+                currentScoreElement.textContent = score;
+            }
+            pipes.forEach(pipe => pipe.x -= 5);
+            pipes = pipes.filter(pipe => pipe.x + 100 > 0);
+        }
+
+        function updateBird() {
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+            if (bird.y + bird.height > canvas.height || bird.y < 0) {
+                resetGame();
+            }
+        }
+
+        function resetGame() {
+            previousScore = score;
+            if (score > highestScore) {
+                highestScore = score;
+            }
+            score = 0;
+            currentScoreElement.textContent = score;
+            highestScoreElement.textContent = highestScore;
+            previousScoreElement.textContent = previousScore;
+
+            bird.y = canvas.height / 2;
+            bird.velocity = 0;
+            pipes = [];
+            frame = 0;
+        }
+
+        function checkCollision() {
+            pipes.forEach(pipe => {
+                const textWidth = ctx.measureText(pipe.text).width;
+                if (
+                    bird.x < pipe.x + textWidth &&
+                    bird.x + bird.width > pipe.x &&
+                    bird.y < pipe.y &&
+                    bird.y + bird.height > pipe.y - 20
+                ) {
+                    resetGame();
+                }
+            });
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBird();
+            drawPipes();
+            updateBird();
+            updatePipes();
+            checkCollision();
+            frame++;
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                bird.velocity = bird.lift;
+            }
+        });
+
+        startButton.addEventListener('click', () => {
+            startButton.style.display = 'none';
+            canvas.style.display = 'block';
+            gameLoop();
+        });
+    </script>
+</body>
+</html>
